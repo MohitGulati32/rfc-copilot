@@ -15,12 +15,17 @@ The agent walks an engineer from a rough problem statement to an approved RFC. I
 
 ## Architecture
 
+**Target architecture** (full, including the Phase 2 memory layer):
+
 ```
 START -> load_project_memory -> clarify_requirements (human-in-the-loop) -> search_prior_art (Tavily)
       -> retrieve_past_rfcs (LangGraph Store) -> generate_rfc_draft -> revision_loop (max 3 cycles)
       -> human_approval_gate (interrupt) -> update_memory (TrustCall) -> END
 ```
 
+**Current implementation (Phase 1, no memory layer yet):**
+
+```mermaid
 ---
 config:
   flowchart:
@@ -40,6 +45,7 @@ graph TD;
         classDef default fill:#f2f0ff,line-height:1.2
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
+```
 
 
 ## How Memory Improves Quality
