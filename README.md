@@ -21,7 +21,26 @@ START -> load_project_memory -> clarify_requirements (human-in-the-loop) -> sear
       -> human_approval_gate (interrupt) -> update_memory (TrustCall) -> END
 ```
 
-_(Diagram to be generated and embedded here in Step 7.)_
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        clarify_requirements(clarify_requirements<hr/><small><em>__interrupt = after</em></small>)
+        search_prior_art(search_prior_art)
+        generate_rfc_draft(generate_rfc_draft<hr/><small><em>__interrupt = after</em></small>)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> clarify_requirements;
+        clarify_requirements --> search_prior_art;
+        generate_rfc_draft -.-> __end__;
+        search_prior_art --> generate_rfc_draft;
+        generate_rfc_draft -.-> generate_rfc_draft;
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+
 
 ## How Memory Improves Quality
 
