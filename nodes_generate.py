@@ -41,7 +41,12 @@ reasons they were not chosen, not strawmen.
 - Keep the tone direct and technical, written for a senior engineering audience that \
 will push back on hand-waving.
 - If human feedback on a previous draft is provided, address it explicitly rather \
-than making cosmetic changes."""
+than making cosmetic changes.
+- If a project profile is provided, write for that team's actual tech stack and \
+conventions rather than generic advice, and respect their stated RFC style preferences.
+- If past RFC memories are provided, treat them as this team's own precedent. Stay \
+consistent with decisions they've already made unless the current problem genuinely \
+warrants a different approach, and say so explicitly if you're diverging from precedent."""
 
 
 def _format_prior_art(prior_art: list) -> str:
@@ -64,14 +69,55 @@ def _format_clarifications(clarifications: list) -> str:
     return "\n\n".join(lines)
 
 
+def _format_project_profile(project_profile: dict) -> str:
+    if not project_profile:
+        return "No project profile available yet."
+
+    tech_stack = project_profile.get("tech_stack") or []
+    past_decisions = project_profile.get("past_decisions") or []
+
+    lines = [f"Project: {project_profile.get('project_name', 'unknown')}"]
+    if tech_stack:
+        lines.append(f"Tech stack: {', '.join(tech_stack)}")
+    if project_profile.get("team_size"):
+        lines.append(f"Team size: {project_profile['team_size']}")
+    if past_decisions:
+        lines.append("Known past decisions:\n" + "\n".join(f"- {d}" for d in past_decisions))
+    if project_profile.get("preferred_rfc_style"):
+        lines.append(f"Preferred RFC style: {project_profile['preferred_rfc_style']}")
+
+    return "\n".join(lines) if len(lines) > 1 else "No project profile available yet."
+
+
+def _format_retrieved_rfcs(retrieved_rfcs: list) -> str:
+    if not retrieved_rfcs:
+        return "No related past RFCs found."
+    lines = []
+    for rfc in retrieved_rfcs:
+        status = "approved" if rfc.get("approved") else "not approved"
+        lines.append(
+            f"- \"{rfc.get('title', 'Untitled')}\" ({rfc.get('problem_domain', 'unknown domain')}, {status}, "
+            f"similarity {rfc.get('score', 0):.2f}): {rfc.get('proposed_solution', '')}"
+        )
+    return "\n".join(lines)
+
+
 def generate_rfc_draft(state: State) -> dict:
     problem_statement = state["problem_statement"]
     clarifications = state.get("clarifications", [])
     prior_art = state.get("prior_art", [])
     human_feedback = state.get("human_feedback", "")
     revision_count = state.get("revision_count", 0)
+    project_profile = state.get("project_profile", {})
+    retrieved_rfcs = state.get("retrieved_rfcs", [])
 
-    user_content = f"""Problem statement:
+    user_content = f"""Project context:
+{_format_project_profile(project_profile)}
+
+Related past RFCs from this project:
+{_format_retrieved_rfcs(retrieved_rfcs)}
+
+Problem statement:
 {problem_statement}
 
 Clarifying questions and answers:

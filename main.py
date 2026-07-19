@@ -28,6 +28,8 @@ def main():
         "max_revisions": 3,
         "human_feedback": "",
         "approved": False,
+        "project_profile": {},
+        "retrieved_rfcs": [],
     }
 
     graph.invoke(initial_state, config)

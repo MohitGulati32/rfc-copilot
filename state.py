@@ -50,6 +50,15 @@ class State(TypedDict):
     # Set to True by the human_approval_gate node once the draft is signed off.
     approved: bool
 
+    # The project's long-term profile, loaded from the Store at session
+    # start by load_project_memory (Step 9). Dict form of ProjectProfile.
+    project_profile: dict
+
+    # Past RFC memories retrieved via semantic search over the problem
+    # statement, by retrieve_past_rfcs (Step 9). List of dicts shaped
+    # like RFCMemory plus a similarity "score" and store "key".
+    retrieved_rfcs: list
+
 
 class ProjectProfile(BaseModel):
     """
