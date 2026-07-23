@@ -6,16 +6,32 @@ Run: python main.py
 Walks through: problem statement -> clarifying questions (you answer) ->
 prior art search -> RFC draft -> your review (approve or give feedback,
 looping up to max_revisions times) -> final draft printed to screen.
+
+Memory persists across runs via persistence.py, which loads local_store.json
+at startup and saves back to it when the session ends (whether it ends
+normally or you Ctrl+C out), so a later `python main.py` run can actually
+build on what an earlier run learned.
 """
 
 from graph import graph
+from store import store
+from persistence import load_store, save_store
 
 
 def main():
+    load_store(store)
+
     print("=" * 60)
     print("Engineering RFC Generator")
     print("=" * 60)
 
+    try:
+        run_session()
+    finally:
+        save_store(store)
+
+
+def run_session():
     problem_statement = input("\nDescribe the problem you need an RFC for:\n> ").strip()
 
     config = {"configurable": {"thread_id": "cli-session"}}
