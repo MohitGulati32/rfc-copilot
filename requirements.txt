@@ -4,5 +4,6 @@ langchain-community
 langchain-tavily
 langchain-voyageai
 voyageai
+trustcall
 tavily-python
 python-dotenv

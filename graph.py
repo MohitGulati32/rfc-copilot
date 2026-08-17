@@ -31,6 +31,7 @@ from nodes_memory import load_project_memory, retrieve_past_rfcs
 from nodes_clarify import clarify_requirements
 from nodes_prior_art import search_prior_art
 from nodes_generate import generate_rfc_draft
+from nodes_update_memory import update_memory
 from routing import route_after_generation
 
 
@@ -42,6 +43,7 @@ def build_graph():
     builder.add_node("search_prior_art", search_prior_art)
     builder.add_node("retrieve_past_rfcs", retrieve_past_rfcs)
     builder.add_node("generate_rfc_draft", generate_rfc_draft)
+    builder.add_node("update_memory", update_memory)
 
     builder.add_edge(START, "load_project_memory")
     builder.add_edge("load_project_memory", "clarify_requirements")
@@ -51,8 +53,9 @@ def build_graph():
     builder.add_conditional_edges(
         "generate_rfc_draft",
         route_after_generation,
-        {"generate_rfc_draft": "generate_rfc_draft", END: END},
+        {"generate_rfc_draft": "generate_rfc_draft", "update_memory": "update_memory", END: END},
     )
+    builder.add_edge("update_memory", END)
 
     checkpointer = MemorySaver()
     return builder.compile(
