@@ -15,6 +15,7 @@ here on every pass.
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
+from tracing import node_config
 
 from state import State
 
@@ -138,10 +139,13 @@ Previous draft:
 Feedback:
 {human_feedback}"""
 
-    response = llm.invoke([
-        SystemMessage(content=RFC_SYSTEM_PROMPT),
-        HumanMessage(content=user_content),
-    ])
+    response = llm.invoke(
+        [
+            SystemMessage(content=RFC_SYSTEM_PROMPT),
+            HumanMessage(content=user_content),
+        ],
+        config=node_config("generate_rfc_draft", state, model="claude-sonnet-4-6"),
+    )
 
     return {
         "messages": [response],

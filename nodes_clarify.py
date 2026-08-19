@@ -18,6 +18,7 @@ something in the problem statement conflicts with what's on record.
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
+from tracing import node_config
 
 from state import State
 
@@ -73,10 +74,13 @@ def clarify_requirements(state: State) -> dict:
 Problem statement:
 {problem_statement}"""
 
-    response = llm.invoke([
-        SystemMessage(content=CLARIFY_SYSTEM_PROMPT),
-        HumanMessage(content=user_content),
-    ])
+    response = llm.invoke(
+        [
+            SystemMessage(content=CLARIFY_SYSTEM_PROMPT),
+            HumanMessage(content=user_content),
+        ],
+        config=node_config("clarify_requirements", state, model="claude-sonnet-4-6"),
+    )
 
     questions_text = response.content
 

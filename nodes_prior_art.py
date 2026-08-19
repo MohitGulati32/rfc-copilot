@@ -10,7 +10,7 @@ specific sources instead of vague hand-waving.
 
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
-
+from tracing import node_config
 from state import State
 
 load_dotenv()
@@ -45,7 +45,10 @@ def _build_query(state: State) -> str:
 def search_prior_art(state: State) -> dict:
     query = _build_query(state)
 
-    response = tavily_search.invoke({"query": query})
+    response = tavily_search.invoke(
+        {"query": query},
+        config=node_config("search_prior_art", state),
+    )
 
     # TavilySearch swallows exceptions internally (auth errors, network
     # issues) and returns {"error": ...} instead of raising. Surface that

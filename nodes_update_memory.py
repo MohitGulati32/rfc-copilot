@@ -20,7 +20,7 @@ import uuid
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from trustcall import create_extractor
-
+from tracing import node_config
 from state import ProjectProfile, RFCMemory, State
 from store import store
 from nodes_memory import PROJECT_NAMESPACE, PROJECT_PROFILE_KEY, RFC_NAMESPACE
@@ -65,31 +65,37 @@ Approved RFC draft:
 {rfc_draft}"""
 
     # 1. Patch the ProjectProfile with anything new this session revealed.
-    profile_result = profile_extractor.invoke({
-        "messages": [
-            ("system", "Update the project profile based on this RFC session. Only "
-                       "change fields where the session revealed genuinely new or "
-                       "corrected information (tech stack mentioned, team size "
-                       "mentioned, a new past decision worth remembering, a style "
-                       "preference expressed). Leave everything else exactly as-is."),
-            ("human", session_summary),
-        ],
-        "existing": {"ProjectProfile": existing_profile} if existing_profile else None,
-    })
+    profile_result = profile_extractor.invoke(
+        {
+            "messages": [
+                ("system", "Update the project profile based on this RFC session. Only "
+                           "change fields where the session revealed genuinely new or "
+                           "corrected information (tech stack mentioned, team size "
+                           "mentioned, a new past decision worth remembering, a style "
+                           "preference expressed). Leave everything else exactly as-is."),  # unchanged
+                ("human", session_summary),
+            ],
+            "existing": {"ProjectProfile": existing_profile} if existing_profile else None,
+        },
+        config=node_config("update_memory_profile", state, model="claude-sonnet-4-6"),
+    )
     updated_profile: ProjectProfile = profile_result["responses"][0]
     updated_profile_dict = updated_profile.model_dump(mode="json")
     store.put(PROJECT_NAMESPACE, PROJECT_PROFILE_KEY, updated_profile_dict)
 
     # 2. Create a new RFCMemory record for this approved RFC.
-    rfc_result = rfc_memory_extractor.invoke({
-        "messages": [
-            ("system", "Summarize this approved RFC into the RFCMemory schema. "
-                       "The proposed_solution should be one or two sentences, "
-                       "specific enough to be useful as precedent for a future, "
-                       "related RFC. approved should be true."),
-            ("human", session_summary),
-        ],
-    })
+    rfc_result = rfc_memory_extractor.invoke(
+        {
+            "messages": [
+                ("system", "Summarize this approved RFC into the RFCMemory schema. "
+                           "The proposed_solution should be one or two sentences, "
+                           "specific enough to be useful as precedent for a future, "
+                           "related RFC. approved should be true."),  # unchanged
+                ("human", session_summary),
+            ],
+        },
+        config=node_config("update_memory_rfc_record", state, model="claude-sonnet-4-6"),
+    )
     new_rfc_memory: RFCMemory = rfc_result["responses"][0]
     new_rfc_memory_dict = new_rfc_memory.model_dump(mode="json")
 
