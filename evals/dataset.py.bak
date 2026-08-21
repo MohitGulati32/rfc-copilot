@@ -1,0 +1,134 @@
+"""
+Eval dataset for the RFC generator.
+
+Ten problem statements, each a plausible next RFC for the same fictional
+company whose profile and RFC history we've been building up across real
+sessions (Python/AWS stack, Celery+SQS background jobs, the order-service
+extraction, the SNS/SQS event queue, the rollback runbook). Choosing
+problems that extend this same context, rather than unrelated topics, is
+deliberate: it gives the memory-enabled run something real to retrieve
+against, so the before/after comparison in Step 13 measures an actual
+effect rather than comparing two runs that would look the same either way.
+
+Each item also carries the quality criteria the roadmap calls for:
+correct sections present, prior art referenced, trade-offs addressed,
+open questions included. These are what evaluator.py (Day 5) will score
+against, both a deterministic check (do the sections exist) and an
+LLM-as-judge check (is the reasoning actually good, not just present).
+
+create_or_sync_dataset() is idempotent: running it again after adding or
+tweaking an item won't create duplicates, it upserts by example inputs.
+"""
+
+from langsmith import Client
+
+DATASET_NAME = "rfc-generator-eval-v1"
+
+EVAL_ITEMS = [
+    {
+        "problem_statement": "Choose a caching strategy for the order service's read-heavy endpoints (GET /orders/{id}, GET /orders?user_id=)",
+        "domain": "caching / performance",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["order-service architecture", "RDS PostgreSQL setup", "ECS Fargate infra"],
+    },
+    {
+        "problem_statement": "Define an API versioning strategy for the order service's public HTTP API as it starts gaining external consumers",
+        "domain": "API design",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["order-service FastAPI endpoints", "Pydantic v2 schemas"],
+    },
+    {
+        "problem_statement": "Design a feature flag system for gradually rolling out order service changes without a full redeploy",
+        "domain": "deployment / feature management",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["OrderServiceClient feature flag via Parameter Store", "rollback runbook"],
+    },
+    {
+        "problem_statement": "Choose a frontend framework for a new internal admin dashboard for order management and support tooling",
+        "domain": "frontend / tooling",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["team size and Python-heavy stack", "no prior frontend decisions on record"],
+    },
+    {
+        "problem_statement": "Design a multi-tenancy strategy if the platform expands to serve multiple client brands from the same infrastructure",
+        "domain": "architecture / data isolation",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["order-service data ownership boundaries", "strangler-fig extraction RFC"],
+    },
+    {
+        "problem_statement": "Define structured logging and observability conventions for all new services going forward",
+        "domain": "observability",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["structlog usage in order-service and background service", "CloudWatch alarm conventions"],
+    },
+    {
+        "problem_statement": "Choose an approach for database connection pooling as the number of services querying RDS grows",
+        "domain": "database / infrastructure",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["RDS PostgreSQL 16 decision", "db.t4g instance sizing"],
+    },
+    {
+        "problem_statement": "Design a strategy for handling PII data retention and deletion requests for the order service",
+        "domain": "compliance / data governance",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["order-service data ownership", "no prior compliance RFC on record"],
+    },
+    {
+        "problem_statement": "Choose a contract testing approach between the order service and the monolith to catch breaking API changes early",
+        "domain": "testing strategy",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["order-service API design", "pytest usage across services"],
+    },
+    {
+        "problem_statement": "Define an on-call rotation and incident response process for the order service now that it's in production",
+        "domain": "operations / process",
+        "expected_sections": ["Problem", "Proposed Solution", "Alternatives Considered", "Trade-offs and Risks", "Implementation Plan", "Open Questions"],
+        "relevant_prior_art": ["rollback runbook RFC", "6-person team, no dedicated ops function"],
+    },
+]
+
+
+def create_or_sync_dataset() -> str:
+    """
+    Create the LangSmith dataset if it doesn't exist, and upsert all 10
+    examples into it. Safe to re-run: LangSmith upserts examples by
+    dataset + inputs, so editing an item above and re-running this just
+    updates that example rather than duplicating it.
+
+    Returns the dataset_id.
+    """
+    client = Client()
+
+    existing = list(client.list_datasets(dataset_name=DATASET_NAME))
+    if existing:
+        dataset = existing[0]
+        print(f"Dataset '{DATASET_NAME}' already exists (id={dataset.id}), syncing examples.")
+    else:
+        dataset = client.create_dataset(
+            dataset_name=DATASET_NAME,
+            description=(
+                "10-item eval set for the RFC generator. Problem statements are "
+                "chosen to plausibly extend the same fictional company's existing "
+                "profile and RFC history, so memory-enabled runs have real "
+                "precedent to draw on for the before/after comparison."
+            ),
+        )
+        print(f"Created dataset '{DATASET_NAME}' (id={dataset.id}).")
+
+    for item in EVAL_ITEMS:
+        client.create_example(
+            inputs={"problem_statement": item["problem_statement"]},
+            outputs={
+                "domain": item["domain"],
+                "expected_sections": item["expected_sections"],
+                "relevant_prior_art": item["relevant_prior_art"],
+            },
+            dataset_id=dataset.id,
+        )
+
+    print(f"Synced {len(EVAL_ITEMS)} examples into '{DATASET_NAME}'.")
+    return dataset.id
+
+
+if __name__ == "__main__":
+    create_or_sync_dataset()

@@ -7,3 +7,4 @@ voyageai
 trustcall
 tavily-python
 python-dotenv
+langsmith
