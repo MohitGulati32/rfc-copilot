@@ -10,3 +10,4 @@ build/
 local_store.json
 test_step*.py
 graph_diagram.png*.bak
+*.code-workspace
