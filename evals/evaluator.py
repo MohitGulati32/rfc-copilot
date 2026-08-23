@@ -195,6 +195,6 @@ def run_memory_enabled():
 
 
 if __name__ == "__main__":
-    print("Running baseline (memory disabled) eval across 10 items...")
-    results = run_baseline()
-    print("Baseline eval complete. Check the LangSmith dashboard under Datasets & Experiments.")
+    print("Running memory-enabled eval across 10 items...")
+    results = run_memory_enabled()
+    print("Memory-enabled eval complete. Compare against 'baseline-no-memory' in the LangSmith dashboard under Datasets & Experiments.")
