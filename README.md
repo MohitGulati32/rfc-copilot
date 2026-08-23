@@ -53,12 +53,10 @@ Each generated draft was scored by a deterministic structural check and an LLM-a
 | `prior_art_referenced` | 1.00 | 1.00 | unchanged |
 | `tradeoffs_specificity` | 5.00 / 5 | 5.00 / 5 | unchanged |
 
-<img width="1167" height="325" alt="eval_comparison" src="https://github.com/user-attachments/assets/9d975647-59e1-4ec8-b812-92d25123af7e" />
-
-
-The finding is precise rather than sweeping: memory's effect is specifically isolated to `precedent_consistency`, whether the draft stays aligned with the team's own past decisions rather than defaulting to generic best practice. The other three metrics were already at ceiling without memory (Claude writes structurally complete, well-cited, specific drafts regardless), so they didn't and shouldn't move. That's a more honest and more defensible result than an across-the-board score bump would have been.
 
 ![Eval comparison: precedent_consistency 3.80 -> 4.90](eval_comparison.png)
+
+The finding is precise rather than sweeping: memory's effect is specifically isolated to `precedent_consistency`, whether the draft stays aligned with the team's own past decisions rather than defaulting to generic best practice. The other three metrics were already at ceiling without memory (Claude writes structurally complete, well-cited, specific drafts regardless), so they didn't and shouldn't move. That's a more honest and more defensible result than an across-the-board score bump would have been.
 
 Trade-off: Memory improved precedent consistency, but increased token usage, latency and cost. This makes memory an architectural trade-off rather than a free quality improvement. Its value depends on how important historical consistency is to the use case.
 
