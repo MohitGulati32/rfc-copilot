@@ -1,87 +1,102 @@
-# Engineering RFC Generator
+# RFC Copilot
 
-A LangGraph agent that helps engineers write better RFCs faster, by asking the right clarifying questions, searching for prior art, drafting a structured proposal, and learning from past decisions across sessions.
+An AI-powered RFC generator that learns your team's engineering decisions over time, built on LangGraph and LangSmith.
 
 ## The Problem
 
-- **Writing RFCs takes too long.** Junior and mid-level engineers can spend days on a first RFC because they do not know what level of detail is expected, what alternatives to consider, or how to frame trade-offs for a senior audience. The blank page problem kills adoption.
-- **Quality is wildly inconsistent.** Without guidance, RFCs vary in depth and structure across teams. Some are too thin to be useful, others so long nobody reads them. Review cycles waste time on structural feedback rather than genuine technical debate.
-- **Prior art is ignored.** Engineers regularly propose solutions already tried and rejected, simply because past RFCs are buried in Confluence or Notion and nobody searches them. The same decisions get relitigated across teams.
-- **Tribal knowledge stays tribal.** When engineers skip RFCs for decisions that warrant them, architectural choices become undocumented. Onboarding new engineers is harder, consistency across teams suffers, and institutional memory walks out the door.
+- **Writing RFCs takes too long.** Engineers spend days on a first draft because they don't know what level of detail is expected, what alternatives to weigh, or how to frame trade-offs for a senior audience.
+- **Quality is inconsistent.** Without guidance, RFCs vary wildly in depth and structure. Review cycles waste time on structural feedback instead of genuine technical debate.
+- **Prior art gets ignored, and decisions get relitigated.** Past RFCs are buried in Confluence or Notion. The same architectural debates happen again six months later because nobody remembers, or nobody searched, what was already decided.
 
 ## What This Does
 
-The agent walks an engineer from a rough problem statement to an approved RFC. It asks clarifying questions, searches for relevant prior art and industry patterns, drafts a structured RFC, runs a bounded revision loop with a human approval gate, and stores the outcome in long-term memory so future RFCs benefit from what came before.
+RFC Copilot is a LangGraph agent that interviews you about a problem, searches for relevant industry prior art, and drafts a structured RFC, then remembers the outcome. Every approved RFC updates a long-term memory layer: a project profile (tech stack, team size, past decisions) and a searchable history of prior RFCs. The next time you ask for an RFC on a related problem, the agent asks fewer redundant questions and writes a draft that's consistent with what your team has already decided, not just generically well-structured.
 
 ## Architecture
 
-**Target architecture** (full, including the Phase 2 memory layer):
-
-```
-START -> load_project_memory -> clarify_requirements (human-in-the-loop) -> search_prior_art (Tavily)
-      -> retrieve_past_rfcs (LangGraph Store) -> generate_rfc_draft -> revision_loop (max 3 cycles)
-      -> human_approval_gate (interrupt) -> update_memory (TrustCall) -> END
-```
-
-**Current implementation (Phase 1, no memory layer yet):**
-
 ```mermaid
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-        __start__([<p>__start__</p>]):::first
-        clarify_requirements(clarify_requirements<hr/><small><em>__interrupt = after</em></small>)
-        search_prior_art(search_prior_art)
-        generate_rfc_draft(generate_rfc_draft<hr/><small><em>__interrupt = after</em></small>)
-        __end__([<p>__end__</p>]):::last
-        __start__ --> clarify_requirements;
-        clarify_requirements --> search_prior_art;
-        generate_rfc_draft -.-> __end__;
-        search_prior_art --> generate_rfc_draft;
-        generate_rfc_draft -.-> generate_rfc_draft;
-        classDef default fill:#f2f0ff,line-height:1.2
-        classDef first fill-opacity:0
-        classDef last fill:#bfb6fc
+graph TD
+    START([START]) --> LPM[load_project_memory]
+    LPM --> CR["clarify_requirements<br/><i>human-in-the-loop</i>"]
+    CR --> SPA["search_prior_art<br/><i>Tavily</i>"]
+    SPA --> RPR["retrieve_past_rfcs<br/><i>semantic search, Voyage AI</i>"]
+    RPR --> GEN[generate_rfc_draft]
+    GEN -->|"not approved,<br/>revisions remain"| GEN
+    GEN -->|approved| UM["update_memory<br/><i>TrustCall</i>"]
+    GEN -->|"max revisions hit,<br/>not approved"| END1([END])
+    UM --> END2([END])
 ```
 
+- **`load_project_memory`** fetches the project's profile (tech stack, team size, past decisions) from the LangGraph Store and injects it into context.
+- **`clarify_requirements`** asks 3-5 targeted questions, skipping anything the profile already answers. This is a human-in-the-loop checkpoint: the graph pauses (`interrupt_after`) until you answer.
+- **`search_prior_art`** runs a Tavily search for relevant industry patterns and public writeups.
+- **`retrieve_past_rfcs`** does a semantic search (Voyage AI embeddings) over the team's own RFC history for related precedent.
+- **`generate_rfc_draft`** writes the full RFC: Problem, Proposed Solution, Alternatives Considered, Trade-offs and Risks, Implementation Plan, Open Questions.
+- A revision loop lets you request changes (up to 3 cycles) before a second human-in-the-loop approval gate.
+- **`update_memory`** runs only on approval. TrustCall patches the project profile with only what genuinely changed, and a new RFC record is added to memory for future retrieval.
 
-## How Memory Improves Quality
+Every LLM and tool call across every node is traced to LangSmith with custom metadata (`node_name`, `revision_count`, `problem_domain`, `model`), not just the default LangGraph node span.
 
-_(Before/after eval scores from Step 13 go here.)_
+## Does Memory Actually Help? (Measured, Not Assumed)
 
-## LangSmith Trace
+Rather than assume the memory layer improves output quality, this was measured directly. A 10-item eval dataset was built (problem statements plausibly extending the same team's existing profile and RFC history), then run twice through an identical, non-interactive evaluation graph, once with an empty project profile and no retrieved RFCs, once with the team's real accumulated memory (7 approved RFCs, a populated profile).
 
-_(Trace screenshot from Step 12 goes here.)_
+Each generated draft was scored by a deterministic structural check and an LLM-as-judge evaluator across four metrics:
+
+| Metric | No Memory | With Memory | Change |
+|---|---|---|---|
+| `precedent_consistency` | 3.80 / 5 | 4.90 / 5 | **+29%** |
+| `structural_completeness` | 1.00 | 1.00 | unchanged |
+| `prior_art_referenced` | 1.00 | 1.00 | unchanged |
+| `tradeoffs_specificity` | 5.00 / 5 | 5.00 / 5 | unchanged |
+
+The finding is precise rather than sweeping: memory's effect is specifically isolated to `precedent_consistency`, whether the draft stays aligned with the team's own past decisions rather than defaulting to generic best practice. The other three metrics were already at ceiling without memory (Claude writes structurally complete, well-cited, specific drafts regardless), so they didn't and shouldn't move. That's a more honest and more defensible result than an across-the-board score bump would have been.
+
+![Eval comparison: precedent_consistency 3.80 -> 4.90](eval_comparison.png)
+
+The trade-off: memory-enabled generations use roughly twice the input tokens and take longer, since the full project profile and retrieved RFCs are added to the prompt.
+
+## Observability
+
+Every node, and every LLM/tool call within it, is traced to LangSmith with custom metadata for filtering by node, revision count, problem domain, and model.
+
+![LangSmith trace with custom metadata](langsmith_trace.png)
 
 ## Setup
 
-1. Clone the repo and create a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Copy `.env.example` to `.env` and fill in your own keys:
-   ```bash
-   cp .env.example .env
-   ```
-4. Run the graph:
-   ```bash
-   python main.py
-   ```
+```bash
+git clone https://github.com/MohitGulati32/rfc-copilot.git
+cd rfc-copilot
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# fill in ANTHROPIC_API_KEY, TAVILY_API_KEY, VOYAGE_API_KEY, LANGSMITH_API_KEY
+```
 
-## What Is Next
+## Usage
 
-- Outcome tracking on past RFC decisions
-- Postgres-backed store for production use
-- Slack integration for approval notifications
+**Generate an RFC:**
+
+```bash
+python main.py
+```
+
+Describe the problem, answer the clarifying questions (a single message covers all of them), review the draft, approve or request revisions.
+
+**Run the eval suite:**
+
+```bash
+python evals/dataset.py       # creates/syncs the 10-item LangSmith dataset (one-time)
+python -m evals.evaluator     # runs the memory-enabled comparison
+```
+
+## What's Next
+
+- **Outcome tracking**: `RFCMemory.outcome` is currently always `null`. Wiring this up (did the approved decision actually work out?) would let retrieval eventually favor RFCs with good outcomes, not just topical similarity.
+- **Postgres-backed Store**: the current `InMemoryStore` with local JSON persistence is fine for development; production would need a durable, concurrent-safe backing store.
+- **Slack integration**: surfacing the clarifying questions and draft review in Slack instead of a CLI, so the human-in-the-loop steps fit into how engineers already work.
 
 ---
 
-Mohit Gulati | github.com/MohitGulati32 | linkedin.com/in/mohit-gulati32
+Mohit Gulati | [github.com/MohitGulati32](https://github.com/MohitGulati32) | [linkedin.com/in/mohit-gulati32](https://linkedin.com/in/mohit-gulati32)
