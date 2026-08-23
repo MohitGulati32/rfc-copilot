@@ -2,6 +2,8 @@
 
 An AI-powered RFC generator that learns your team's engineering decisions over time, built on LangGraph and LangSmith.
 
+Measured result: In a 10-item LangSmith evaluation, long-term memory improved consistency with previous engineering decisions by 29% (3.80 → 4.90/5), while general RFC quality remained unchanged.
+
 ## The Problem
 
 - **Writing RFCs takes too long.** Engineers spend days on a first draft because they don't know what level of detail is expected, what alternatives to weigh, or how to frame trade-offs for a senior audience.
@@ -50,6 +52,9 @@ Each generated draft was scored by a deterministic structural check and an LLM-a
 | `structural_completeness` | 1.00 | 1.00 | unchanged |
 | `prior_art_referenced` | 1.00 | 1.00 | unchanged |
 | `tradeoffs_specificity` | 5.00 / 5 | 5.00 / 5 | unchanged |
+
+<img width="1167" height="325" alt="eval_comparison" src="https://github.com/user-attachments/assets/9d975647-59e1-4ec8-b812-92d25123af7e" />
+
 
 The finding is precise rather than sweeping: memory's effect is specifically isolated to `precedent_consistency`, whether the draft stays aligned with the team's own past decisions rather than defaulting to generic best practice. The other three metrics were already at ceiling without memory (Claude writes structurally complete, well-cited, specific drafts regardless), so they didn't and shouldn't move. That's a more honest and more defensible result than an across-the-board score bump would have been.
 
