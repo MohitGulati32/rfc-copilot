@@ -55,7 +55,7 @@ The finding is precise rather than sweeping: memory's effect is specifically iso
 
 ![Eval comparison: precedent_consistency 3.80 -> 4.90](eval_comparison.png)
 
-The trade-off: memory-enabled generations use roughly twice the input tokens and take longer, since the full project profile and retrieved RFCs are added to the prompt.
+Trade-off: Memory improved precedent consistency, but increased token usage, latency and cost. This makes memory an architectural trade-off rather than a free quality improvement. Its value depends on how important historical consistency is to the use case.
 
 ## Observability
 
