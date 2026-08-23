@@ -21,9 +21,10 @@ graph TD
     CR --> SPA["search_prior_art<br/><i>Tavily</i>"]
     SPA --> RPR["retrieve_past_rfcs<br/><i>semantic search, Voyage AI</i>"]
     RPR --> GEN[generate_rfc_draft]
-    GEN -->|"not approved,<br/>revisions remain"| GEN
-    GEN -->|approved| UM["update_memory<br/><i>TrustCall</i>"]
-    GEN -->|"max revisions hit,<br/>not approved"| END1([END])
+    GEN --> ROUTE{approved?}
+    ROUTE -->|"no, revisions remain"| GEN
+    ROUTE -->|yes| UM["update_memory<br/><i>TrustCall</i>"]
+    ROUTE -->|"no, max revisions hit"| END1([END])
     UM --> END2([END])
 ```
 
